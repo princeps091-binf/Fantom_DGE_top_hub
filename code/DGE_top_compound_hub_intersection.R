@@ -94,6 +94,21 @@ library(UpSetR)
 up_l<-list(TAD=in_tad_peak,hub=in_cl_peak)
 UpSetR::upset(fromList(up_l))
 
+tad_ex_peak<-fromList(up_l) %>%
+  mutate(peak=unique(unlist(up_l))) %>% 
+  filter(TAD==1 & hub ==0) %>% 
+  dplyr::select(peak) %>% unlist
+
+peak_ex_peak<-fromList(up_l) %>%
+  mutate(peak=unique(unlist(up_l))) %>% 
+  filter(TAD==0 & hub ==1) %>% 
+  dplyr::select(peak) %>% unlist
+
+inter_peak<-fromList(up_l) %>%
+  mutate(peak=unique(unlist(up_l))) %>% 
+  filter(TAD==1 & hub ==1) %>% 
+  dplyr::select(peak) %>% unlist
+
 res_dge_tbl %>% 
   mutate(hub.io=ifelse(ID %in% in_tad_peak,"in","out")) %>% 
   ggplot(.,aes(mda.lfc,-log10(mda.padj)))+
@@ -101,17 +116,13 @@ res_dge_tbl %>%
   facet_grid(hub.io~.,scales="free")
 
 res_dge_tbl %>% 
-  mutate(hub.io=ifelse(ID %in% in_tad_peak,"in","out")) %>% 
-  ggplot(.,aes(mcf7.lfc,-log10(mcf7.padj)))+
-  geom_point(alpha=0.1)+
+  mutate(hub.io=ifelse(ID %in% inter_peak,"inter",ifelse(ID %in% tad_ex_peak,"tad",ifelse(ID %in% peak_ex_peak,"hub","out")))) %>% 
+  ggplot(.,aes(mda.lfc,-log10(mda.padj)))+
+  geom_point(alpha=0.01)+
   facet_grid(hub.io~.,scales="free")
 
 res_dge_tbl %>% 
-  mutate(hub.io=ifelse(ID %in% in_tad_peak,"in","out")) %>% 
+  mutate(hub.io=ifelse(ID %in% inter_peak,"inter",ifelse(ID %in% tad_ex_peak,"tad",ifelse(ID %in% peak_ex_peak,"hub","out")))) %>% 
+  filter(hub.io!="out") %>% 
   ggplot(.,aes(mda.lfc,color=hub.io))+
-  geom_density()
-
-res_dge_tbl %>% 
-  mutate(hub.io=ifelse(ID %in% in_tad_peak,"in","out")) %>% 
-  ggplot(.,aes(mcf7.padj,color=hub.io))+
   geom_density()
