@@ -1,5 +1,4 @@
 library(tidyverse)
-library(scales)
 library(GenomicRanges)
 library(DESeq2)
 options(scipen = 999999999)
@@ -19,6 +18,8 @@ tbl_in_fn<-function(tmp_file){
 #-------------------------------------------------------------------------------------------------------
 compound_hub_5kb_file<-"~/Documents/multires_bhicect/Bootstrapp_fn/data/candidate_compound_hub/HMEC_5kb_tss_compound_hub.Rda"
 spec_res_file<-"~/Documents/multires_bhicect/data/HMEC/spec_res/"
+TAD_file<-"~/Documents/multires_bhicect/Bootstrapp_fn/data/pval_tbl/CAGE_union_HMEC_TAD_pval_tbl.Rda"
+
 dge_file<-"./data/HMEC_MCF7_MDA_DSeq2.Rda"
 
 compound_hub_5kb_tbl<-tbl_in_fn(compound_hub_5kb_file)
@@ -56,6 +57,13 @@ top_compound_hub_5kb_tbl<-top_compound_hub_5kb_tbl %>%
   }))
 cl_GRange<-IRanges::reduce(do.call("c",top_compound_hub_5kb_tbl$GRange))
 #-------------------------------------
+TAD_tbl<-tbl_in_fn(TAD_file)%>% 
+  group_by(chr) %>% 
+  mutate(FDR=p.adjust(emp.pval,method="fdr")) %>% 
+  filter(FDR<=0.01)
+TAD_GRange<-IRanges::reduce(do.call("c",unlist(TAD_tbl$GRange)))
+#-------------------------------------
+
 dge_tbl<-tbl_in_fn(dge_file)
 
 res_mcf7 <- results( dge_tbl ,name = "cell.line_MCF7_vs_HMEC")
@@ -78,26 +86,32 @@ mcols(dge_Grange)<-res_dge_tbl
 
 ok_dge_GRange<-dge_Grange[unique(c(which(!(is.na(mcols(dge_Grange)$mcf7.padj))),which(!(is.na(mcols(dge_Grange)$mda.padj)))))]
 
-in_peak<-mcols(ok_dge_GRange)$ID[unique(queryHits(findOverlaps(ok_dge_GRange,cl_GRange)))]
+in_cl_peak<-mcols(ok_dge_GRange)$ID[unique(queryHits(findOverlaps(ok_dge_GRange,cl_GRange)))]
+
+in_tad_peak<-mcols(ok_dge_GRange)$ID[unique(queryHits(findOverlaps(ok_dge_GRange,TAD_GRange)))]
+
+library(UpSetR)
+up_l<-list(TAD=in_tad_peak,hub=in_cl_peak)
+UpSetR::upset(fromList(up_l))
 
 res_dge_tbl %>% 
-  mutate(hub.io=ifelse(ID %in% in_peak,"in","out")) %>% 
+  mutate(hub.io=ifelse(ID %in% in_tad_peak,"in","out")) %>% 
   ggplot(.,aes(mda.lfc,-log10(mda.padj)))+
   geom_point(alpha=0.1)+
   facet_grid(hub.io~.,scales="free")
 
 res_dge_tbl %>% 
-  mutate(hub.io=ifelse(ID %in% in_peak,"in","out")) %>% 
+  mutate(hub.io=ifelse(ID %in% in_tad_peak,"in","out")) %>% 
   ggplot(.,aes(mcf7.lfc,-log10(mcf7.padj)))+
   geom_point(alpha=0.1)+
   facet_grid(hub.io~.,scales="free")
 
 res_dge_tbl %>% 
-  mutate(hub.io=ifelse(ID %in% in_peak,"in","out")) %>% 
+  mutate(hub.io=ifelse(ID %in% in_tad_peak,"in","out")) %>% 
   ggplot(.,aes(mda.lfc,color=hub.io))+
   geom_density()
 
 res_dge_tbl %>% 
-  mutate(hub.io=ifelse(ID %in% in_peak,"in","out")) %>% 
+  mutate(hub.io=ifelse(ID %in% in_tad_peak,"in","out")) %>% 
   ggplot(.,aes(mcf7.padj,color=hub.io))+
   geom_density()
