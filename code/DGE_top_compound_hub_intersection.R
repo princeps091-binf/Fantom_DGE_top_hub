@@ -110,19 +110,22 @@ inter_peak<-fromList(up_l) %>%
   dplyr::select(peak) %>% unlist
 
 res_dge_tbl %>% 
-  mutate(hub.io=ifelse(ID %in% in_tad_peak,"in","out")) %>% 
+  mutate(hub.io=ifelse(ID %in% inter_peak,"inter",ifelse(ID %in% tad_ex_peak,"tad",ifelse(ID %in% peak_ex_peak,"hub","out")))) %>% 
+  mutate(hub.io=fct_relevel(hub.io, c('tad','hub','inter','out'))) %>% 
   ggplot(.,aes(mda.lfc,-log10(mda.padj)))+
-  geom_point(alpha=0.1)+
+  geom_point()+
   facet_grid(hub.io~.,scales="free")
 
 res_dge_tbl %>% 
   mutate(hub.io=ifelse(ID %in% inter_peak,"inter",ifelse(ID %in% tad_ex_peak,"tad",ifelse(ID %in% peak_ex_peak,"hub","out")))) %>% 
-  ggplot(.,aes(mda.lfc,-log10(mda.padj)))+
-  geom_point(alpha=0.01)+
+  mutate(hub.io=fct_relevel(hub.io, c('tad','hub','inter','out'))) %>% 
+  ggplot(.,aes(mcf7.lfc,-log10(mcf7.padj)))+
+  geom_point()+
   facet_grid(hub.io~.,scales="free")
 
 res_dge_tbl %>% 
   mutate(hub.io=ifelse(ID %in% inter_peak,"inter",ifelse(ID %in% tad_ex_peak,"tad",ifelse(ID %in% peak_ex_peak,"hub","out")))) %>% 
+  mutate(hub.io=fct_relevel(hub.io, c('tad','hub','inter','out'))) %>% 
   filter(hub.io!="out") %>% 
   ggplot(.,aes(mda.lfc,color=hub.io))+
   geom_density()
