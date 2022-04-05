@@ -126,6 +126,8 @@ res_dge_tbl %>%
 res_dge_tbl %>% 
   mutate(hub.io=ifelse(ID %in% inter_peak,"inter",ifelse(ID %in% tad_ex_peak,"tad",ifelse(ID %in% peak_ex_peak,"hub","out")))) %>% 
   mutate(hub.io=fct_relevel(hub.io, c('tad','hub','inter','out'))) %>% 
-  filter(hub.io!="out") %>% 
-  ggplot(.,aes(mda.lfc,color=hub.io))+
-  geom_density()
+  mutate(set=ifelse(hub.io=="out","out","in")) %>% 
+  ggplot(.,aes(mcf7.lfc,color=hub.io))+
+  geom_density()+
+  facet_grid(set~.,scales="free_y")
+ggsave("~/Documents/multires_bhicect/weeklies/weekly55/img/MCF7_LFC_dens.png")
