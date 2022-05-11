@@ -2,7 +2,6 @@ library(tidyverse)
 library(GenomicRanges)
 library(DESeq2)
 library(furrr)
-library(fgsea)
 options(scipen = 999999999)
 res_set <- c('1Mb','500kb','100kb','50kb','10kb','5kb')
 res_num <- c(1e6,5e5,1e5,5e4,1e4,5e3)
@@ -20,11 +19,10 @@ tbl_in_fn<-function(tmp_file){
 #-------------------------------------------------------------------------------------------------------
 hub_file<-"~/Documents/multires_bhicect/Bootstrapp_fn/data/DAGGER_tbl/trans_res/HMEC_union_top_trans_res_dagger_tbl.Rda"
 spec_res_file<-"~/Documents/multires_bhicect/data/HMEC/spec_res/"
-TAD_file<-"~/Documents/multires_bhicect/Bootstrapp_fn/data/pval_tbl/CAGE_union_HMEC_TAD_pval_tbl.Rda"
-
 dge_file<-"./data/HMEC_MCF7_MDA_DSeq2.Rda"
-#-------------------------------------------------------------------------------------------------------
+gene_GRange_file<-"./data/CAGE_GM12878_entrez_gene_GRange.Rda"
 
+#-------------------------------------------------------------------------------------------------------
 hub_tbl<-tbl_in_fn(hub_file) %>% 
   mutate(res=str_split_fixed(node,"_",2)[,1])
 
@@ -50,13 +48,13 @@ hub_tbl<-hub_tbl %>%
     
   }))
 cl_GRange<-IRanges::reduce(do.call("c",hub_tbl$GRange))
+
 tmp_l<-hub_tbl %>% 
   #  filter(res%in% c("1Mb","500kb","100kb")) %>% 
   #  filter(res%in% c("10kb","50kb","5kb")) %>% 
   dplyr::select(GRange) %>% as.list
 cl_GRange<-IRanges::reduce(do.call("c",tmp_l$GRange))
 
-#-------------------------------------------------------------------------------------------------------
 dge_tbl<-tbl_in_fn(dge_file)
 
 res_mcf7 <- results( dge_tbl ,name = "cell.line_MCF7_vs_HMEC")
@@ -80,16 +78,3 @@ mcols(dge_Grange)<-res_dge_tbl
 ok_dge_GRange<-dge_Grange[unique(c(which(!(is.na(mcols(dge_Grange)$mcf7.padj))),which(!(is.na(mcols(dge_Grange)$mda.padj)))))]
 
 in_cl_peak<-mcols(ok_dge_GRange)$ID[unique(queryHits(findOverlaps(ok_dge_GRange,cl_GRange)))]
-
-dge_coord_tbl<-dge_coord_tbl %>% 
-  left_join(.,res_dge_tbl %>% 
-              dplyr::select(mcf7.lfc,mcf7.padj,ID))
-peak_rank<-dge_coord_tbl %>% 
-  filter(!(is.na(mcf7.padj))) %>% 
-  mutate(rank.m=sign(mcf7.lfc)*-log10(mcf7.padj)) %>% 
-  dplyr::select(ID,rank.m)
-peak_rank_vec<-peak_rank$rank.m
-names(peak_rank_vec)<-peak_rank$ID
-
-gesea_res<-fgsea(list(hub=in_cl_peak),peak_rank_vec)
-plotEnrichment(in_cl_peak,peak_rank_vec)

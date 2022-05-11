@@ -8,8 +8,8 @@ res_num <- c(1e6,5e5,1e5,5e4,1e4,5e3)
 names(res_num)<-res_set
 #-------------------------------------------------------------------------------------------------------
 tbl_in_fn<-function(tmp_file){
-  out_tbl<-get(load(tmp_file))
-  tmp_obj<-names(mget(load(tmp_file)))
+  out_tbl<-get(base::load(tmp_file))
+  tmp_obj<-names(mget(base::load(tmp_file)))
   rm(list=tmp_obj)
   rm(tmp_obj)
   
@@ -17,14 +17,15 @@ tbl_in_fn<-function(tmp_file){
 }
 
 #-------------------------------------------------------------------------------------------------------
-hub_file<-"~/Documents/multires_bhicect/Bootstrapp_fn/data/DAGGER_tbl/HMEC_union_trans_res_dagger_tbl.Rda"
+hub_file<-"~/Documents/multires_bhicect/Bootstrapp_fn/data/DAGGER_tbl/trans_res/HMEC_union_top_trans_res_dagger_tbl.Rda"
 spec_res_file<-"~/Documents/multires_bhicect/data/HMEC/spec_res/"
 TAD_file<-"~/Documents/multires_bhicect/Bootstrapp_fn/data/pval_tbl/CAGE_union_HMEC_TAD_pval_tbl.Rda"
 
 dge_file<-"./data/HMEC_MCF7_MDA_DSeq2.Rda"
 #-------------------------------------------------------------------------------------------------------
 
-hub_tbl<-tbl_in_fn(hub_file)
+hub_tbl<-tbl_in_fn(hub_file) %>% 
+  mutate(res=str_split_fixed(node,"_",2)[,1])
 
 hub_tbl<-do.call(bind_rows,map(unique(hub_tbl$chr),function(chromo){
   message(chromo)
@@ -49,16 +50,11 @@ hub_tbl<-hub_tbl %>%
   }))
 cl_GRange<-IRanges::reduce(do.call("c",hub_tbl$GRange))
 tmp_l<-hub_tbl %>% 
-  filter(res=="100kb") %>% 
+#  filter(res%in% c("1Mb","500kb","100kb")) %>% 
+#  filter(res%in% c("10kb","50kb","5kb")) %>% 
   dplyr::select(GRange) %>% as.list
 cl_GRange<-IRanges::reduce(do.call("c",tmp_l$GRange))
 
-#-------------------------------------
-TAD_tbl<-tbl_in_fn(TAD_file)%>% 
-  group_by(chr) %>% 
-  mutate(FDR=p.adjust(emp.pval,method="fdr")) %>% 
-  filter(FDR<=0.01)
-TAD_GRange<-IRanges::reduce(do.call("c",unlist(TAD_tbl$GRange)))
 #-------------------------------------------------------------------------------------------------------
 dge_tbl<-tbl_in_fn(dge_file)
 
@@ -84,14 +80,22 @@ ok_dge_GRange<-dge_Grange[unique(c(which(!(is.na(mcols(dge_Grange)$mcf7.padj))),
 
 in_cl_peak<-mcols(ok_dge_GRange)$ID[unique(queryHits(findOverlaps(ok_dge_GRange,cl_GRange)))]
 
-in_tad_peak<-mcols(ok_dge_GRange)$ID[unique(queryHits(findOverlaps(ok_dge_GRange,TAD_GRange)))]
-
 res_dge_tbl %>% 
   mutate(hub.io=ifelse(ID %in% in_cl_peak,"in","out")) %>% 
   ggplot(.,aes(mcf7.lfc,color=hub.io))+
   geom_density()
+#-------------------------------------
+## Comparison with TADs
+TAD_tbl<-tbl_in_fn(TAD_file)%>% 
+  group_by(chr) %>% 
+  mutate(FDR=p.adjust(emp.pval,method="fdr")) %>% 
+  filter(FDR<=0.01)
+TAD_GRange<-IRanges::reduce(do.call("c",unlist(TAD_tbl$GRange)))
 #--------------------------------------------
+
 library(UpSetR)
+in_tad_peak<-mcols(ok_dge_GRange)$ID[unique(queryHits(findOverlaps(ok_dge_GRange,TAD_GRange)))]
+
 up_l<-list(TAD=in_tad_peak,hub=in_cl_peak)
 UpSetR::upset(fromList(up_l))
 
@@ -117,3 +121,4 @@ res_dge_tbl %>%
   ggplot(.,aes(mcf7.lfc,color=hub.io))+
   geom_density()+
   facet_grid(set~.,scales="free_y")
+#--------------------------------------------
