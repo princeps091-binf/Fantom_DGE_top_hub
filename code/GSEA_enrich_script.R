@@ -1,6 +1,5 @@
 library(tidyverse)
 library(GenomicRanges)
-library(DESeq2)
 library(furrr)
 options(scipen = 999999999)
 res_set <- c('1Mb','500kb','100kb','50kb','10kb','5kb')
@@ -19,10 +18,11 @@ tbl_in_fn<-function(tmp_file){
 #-------------------------------------------------------------------------------------------------------
 hub_file<-"~/Documents/multires_bhicect/Bootstrapp_fn/data/DAGGER_tbl/trans_res/HMEC_union_top_trans_res_dagger_tbl.Rda"
 spec_res_file<-"~/Documents/multires_bhicect/data/HMEC/spec_res/"
-dge_file<-"./data/HMEC_MCF7_MDA_DSeq2.Rda"
-gene_GRange_file<-"./data/CAGE_GM12878_entrez_gene_GRange.Rda"
+dge_tbl_file<-"./data/CAGE_DGE_entrez_gene_tbl.Rda"
 
 #-------------------------------------------------------------------------------------------------------
+dge_tbl<-tbl_in_fn(dge_tbl_file)
+
 hub_tbl<-tbl_in_fn(hub_file) %>% 
   mutate(res=str_split_fixed(node,"_",2)[,1])
 
@@ -55,26 +55,106 @@ tmp_l<-hub_tbl %>%
   dplyr::select(GRange) %>% as.list
 cl_GRange<-IRanges::reduce(do.call("c",tmp_l$GRange))
 
-dge_tbl<-tbl_in_fn(dge_file)
 
-res_mcf7 <- results( dge_tbl ,name = "cell.line_MCF7_vs_HMEC")
-res_mda <- results( dge_tbl ,name = "cell.line_MDA_vs_HMEC")
-res_mcf7_tbl<-as_tibble(res_mcf7)%>%dplyr::select(log2FoldChange,lfcSE, pvalue, padj)%>%mutate(ID=rownames(res_mcf7))%>%dplyr::rename(mcf7.lfc=log2FoldChange,mcf7.lfc.se=lfcSE,mcf7.pval=pvalue,mcf7.padj=padj)
-res_mda_tbl<-as_tibble(res_mda)%>%dplyr::select(log2FoldChange,lfcSE, pvalue, padj)%>%mutate(ID=rownames(res_mda))%>%dplyr::rename(mda.lfc=log2FoldChange,mda.lfc.se=lfcSE,mda.pval=pvalue,mda.padj=padj)
-res_dge_tbl<-res_mcf7_tbl%>%full_join(.,res_mda_tbl)
-rm(res_mcf7_tbl,res_mda_tbl,res_mda,res_mcf7)
-rm(dge_tbl)
-dge_coord_tbl<-res_dge_tbl %>%
-  dplyr::select(ID) %>% 
-  mutate(chr=str_split_fixed(ID,":|\\.\\.|,",4)[,1],
-         start=as.numeric(str_split_fixed(ID,":|\\.\\.|,",4)[,2]),
-         end=as.numeric(str_split_fixed(ID,":|\\.\\.|,",4)[,3]))
-dge_Grange<-   GRanges(seqnames=dge_coord_tbl$chr,
-                       ranges = IRanges(start=dge_coord_tbl$start,
-                                        end=dge_coord_tbl$end
+dge_Grange<-   GRanges(seqnames=dge_tbl$chr,
+                       ranges = IRanges(start=dge_tbl$start,
+                                        end=dge_tbl$end
                        ))
-mcols(dge_Grange)<-res_dge_tbl
+mcols(dge_Grange)<-dge_tbl %>% dplyr::select(-c(chr,start,end))
 
 ok_dge_GRange<-dge_Grange[unique(c(which(!(is.na(mcols(dge_Grange)$mcf7.padj))),which(!(is.na(mcols(dge_Grange)$mda.padj)))))]
 
 in_cl_peak<-mcols(ok_dge_GRange)$ID[unique(queryHits(findOverlaps(ok_dge_GRange,cl_GRange)))]
+
+
+all_peak_entrez_vec<-dge_tbl %>% 
+  dplyr::select(ID,entrez.id) %>% 
+  unnest(cols=c(entrez.id)) %>% 
+  distinct(entrez.id)%>% unlist
+
+dge_entrez_vec<-dge_tbl %>% 
+  filter(ID %in% mcols(ok_dge_GRange)$ID) %>%
+  dplyr::select(ID,entrez.id) %>% 
+  unnest(cols=c(entrez.id)) %>% 
+  distinct(entrez.id)%>% unlist
+
+hub_entrez_vec<-dge_tbl %>% 
+  filter(ID %in% in_cl_peak) %>%
+  dplyr::select(ID,entrez.id) %>% 
+  unnest(cols=c(entrez.id)) %>% 
+  distinct(entrez.id) %>% unlist
+#-------------------------------------------------------------------
+GO_set_enrich_fn<-function(cl_set_gene,cage_active_genes_vec,GOBP_set){
+  fn_env<-environment()
+  
+  cl<-makeCluster(5)
+  clusterEvalQ(cl, {
+    library(dplyr)
+    print('node ready')
+  })
+  clusterExport(cl,c('cl_set_gene','cage_active_genes_vec'),envir = fn_env)
+  go_pval<-parLapply(cl,GOBP_set,function(tmp_set){
+    hitInSample<-sum(cl_set_gene %in% tmp_set)
+    sampleSize<-length(cl_set_gene)
+    hitInPop<-sum(cage_active_genes_vec %in% tmp_set)
+    failInPop<-length(cage_active_genes_vec) - hitInPop
+    p_val<-phyper(hitInSample-1, hitInPop, failInPop, sampleSize, lower.tail= FALSE)
+    OR_GO<-(hitInSample/sampleSize)/(hitInPop/length(cage_active_genes_vec))
+    return(tibble(p.val=p_val,OR=OR_GO,in.gene=hitInSample))
+  })
+  stopCluster(cl)
+  rm(cl)
+  path_tbl<-do.call(bind_rows,go_pval)%>%mutate(Gene.Set=names(go_pval),FDR=p.adjust(p.val,method='fdr'))%>%dplyr::select(Gene.Set,FDR,OR,in.gene)
+  return(path_tbl)
+}
+
+#------------------------------
+
+gene_set_file<-"~/Documents/multires_bhicect/GO_enrichment_viz/data/GOBP_gene_set_l.Rda"
+
+
+
+
+Gene_set_l<-tbl_in_fn(gene_set_file)
+
+full_bg_vec<-unique(unlist(Gene_set_l))
+
+foreground_gene_vec<-hub_entrez_vec
+
+background_gene_vec<-dge_entrez_vec
+
+
+path_tbl<-GO_set_enrich_fn(foreground_gene_vec,background_gene_vec,Gene_set_l)
+print(path_tbl %>% 
+        filter(FDR<=0.01) %>% 
+        arrange(desc(OR))
+      #        arrange(FDR)
+      ,n=100)
+#------------------------------
+library(fgsea)
+all_dge_peak<-mcols(ok_dge_GRange)$ID
+in_cl_peak
+rank_tbl<-dge_tbl %>% 
+  filter(ID %in% in_cl_peak) %>% 
+  dplyr::select(ID,mcf7.lfc,mcf7.padj,entrez.id) %>% 
+  mutate(peak.score=sign(mcf7.lfc)*-log10(mcf7.padj)) %>% 
+  unnest(cols=c(entrez.id)) %>% 
+  filter(!(is.na(entrez.id))) %>% 
+  group_by(entrez.id) %>% 
+  summarise(entrez.score=mean(peak.score))
+
+entrez_rank<-rank_tbl$entrez.score
+names(entrez_rank)<-rank_tbl$entrez.id
+fgseaRes <- fgseaSimple(
+  pathways=Gene_set_l,
+  stats=entrez_rank,
+  nperm=1e4,
+  minSize = 5,
+  maxSize = Inf,
+  scoreType = "std",
+  nproc = 3,
+  gseaParam = 1,
+  BPPARAM = NULL
+)
+as_tibble(fgseaRes) %>% filter(padj<=0.01) %>% 
+  arrange(NES)
