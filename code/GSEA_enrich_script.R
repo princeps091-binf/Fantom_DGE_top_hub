@@ -110,7 +110,7 @@ GO_set_enrich_fn<-function(cl_set_gene,cage_active_genes_vec,GOBP_set){
 
 #------------------------------
 
-gene_set_file<-"~/Documents/multires_bhicect/GO_enrichment_viz/data/GOBP_gene_set_l.Rda"
+gene_set_file<-"~/Documents/multires_bhicect/GO_enrichment_viz/data/Hallmark_gene_set_l.Rda"
 
 
 
