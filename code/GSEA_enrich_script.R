@@ -83,6 +83,18 @@ hub_entrez_vec<-dge_tbl %>%
   dplyr::select(ID,entrez.id) %>% 
   unnest(cols=c(entrez.id)) %>% 
   distinct(entrez.id) %>% unlist
+
+hub_up_entrez_vec<-dge_tbl %>% 
+  filter(ID %in% in_cl_peak) %>%
+  filter(!(is.na(mcf7.padj))) %>% 
+  filter(mcf7.lfc > 0 ) %>% 
+#  filter(!(is.na(mda.padj))) %>% 
+#  filter(mda.lfc > 0 ) %>% 
+  dplyr::select(ID,entrez.id) %>% 
+  unnest(cols=c(entrez.id)) %>% 
+  distinct(entrez.id) %>% unlist
+
+
 #-------------------------------------------------------------------
 GO_set_enrich_fn<-function(cl_set_gene,cage_active_genes_vec,GOBP_set){
   fn_env<-environment()
@@ -119,7 +131,7 @@ Gene_set_l<-tbl_in_fn(gene_set_file)
 
 full_bg_vec<-unique(unlist(Gene_set_l))
 
-foreground_gene_vec<-hub_entrez_vec
+foreground_gene_vec<-hub_up_entrez_vec
 
 background_gene_vec<-dge_entrez_vec
 
@@ -127,21 +139,21 @@ background_gene_vec<-dge_entrez_vec
 path_tbl<-GO_set_enrich_fn(foreground_gene_vec,background_gene_vec,Gene_set_l)
 print(path_tbl %>% 
         filter(FDR<=0.01) %>% 
-        arrange(desc(OR))
-      #        arrange(FDR)
+#        arrange(desc(OR))
+              arrange(FDR)
       ,n=100)
 #------------------------------
 library(fgsea)
 all_dge_peak<-mcols(ok_dge_GRange)$ID
 in_cl_peak
 rank_tbl<-dge_tbl %>% 
-  filter(ID %in% in_cl_peak) %>% 
+#  filter(ID %in% in_cl_peak) %>% 
   dplyr::select(ID,mcf7.lfc,mcf7.padj,entrez.id) %>% 
   mutate(peak.score=sign(mcf7.lfc)*-log10(mcf7.padj)) %>% 
   unnest(cols=c(entrez.id)) %>% 
   filter(!(is.na(entrez.id))) %>% 
   group_by(entrez.id) %>% 
-  summarise(entrez.score=mean(peak.score))
+  summarise(entrez.score=mean(peak.score,na.rm=T))
 
 entrez_rank<-rank_tbl$entrez.score
 names(entrez_rank)<-rank_tbl$entrez.id
@@ -156,5 +168,5 @@ fgseaRes <- fgseaSimple(
   gseaParam = 1,
   BPPARAM = NULL
 )
-as_tibble(fgseaRes) %>% filter(padj<=0.01) %>% 
-  arrange(NES)
+print(as_tibble(fgseaRes) %>% filter(padj<=0.01) %>% 
+  arrange(NES),n=100)
