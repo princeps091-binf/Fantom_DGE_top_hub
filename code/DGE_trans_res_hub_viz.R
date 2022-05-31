@@ -77,22 +77,27 @@ ok_dge_GRange<-dge_Grange[unique(c(which(!(is.na(mcols(dge_Grange)$mcf7.padj))),
 in_cl_peak<-mcols(ok_dge_GRange)$ID[unique(queryHits(findOverlaps(ok_dge_GRange,cl_GRange)))]
 
 
-res_dge_tbl %>% 
+gg_tmp<-res_dge_tbl %>% 
+#  filter(ID %in% mcols(ok_dge_GRange)$ID) %>% 
   mutate(hub.io=ifelse(ID %in% in_cl_peak,"in","out")) %>% 
   ggplot(.,aes(mcf7.lfc,-log10(mcf7.padj),color=hub.io))+
   geom_point(size=0.01)+
   facet_grid(hub.io~.)
-
-res_dge_tbl %>% 
+ggsave("~/Documents/multires_bhicect/weeklies/weekly59/img/volcano_MCF7.png",gg_tmp)
+gg_tmp<-res_dge_tbl %>% 
+#  filter(ID %in% mcols(ok_dge_GRange)$ID) %>% 
   mutate(hub.io=ifelse(ID %in% in_cl_peak,"in","out"),
          up.down=ifelse(mcf7.lfc < 0,"down","up")) %>% 
   ggplot(.,aes(mcf7.padj,color=hub.io))+
   geom_density()+
   facet_grid(up.down~.)
+ggsave("~/Documents/multires_bhicect/weeklies/weekly59/img/pval_dens_MCF7.png",gg_tmp)
 
-res_dge_tbl %>% 
+gg_tmp<-res_dge_tbl %>% 
+#  filter(ID %in% mcols(ok_dge_GRange)$ID) %>% 
   mutate(hub.io=ifelse(ID %in% in_cl_peak,"in","out")) %>% 
   ggplot(.,aes(mcf7.lfc,color=hub.io))+
   geom_density()
+ggsave("~/Documents/multires_bhicect/weeklies/weekly59/img/lfc_dens_MCF7.png",gg_tmp)
 
 #-------------------------------------
