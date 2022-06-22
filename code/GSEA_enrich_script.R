@@ -147,13 +147,25 @@ library(fgsea)
 all_dge_peak<-mcols(ok_dge_GRange)$ID
 in_cl_peak
 rank_tbl<-dge_tbl %>% 
-#  filter(ID %in% in_cl_peak) %>% 
+  filter(ID %in% in_cl_peak) %>% 
   dplyr::select(ID,mcf7.lfc,mcf7.padj,entrez.id) %>% 
   mutate(peak.score=sign(mcf7.lfc)*-log10(mcf7.padj)) %>% 
   unnest(cols=c(entrez.id)) %>% 
   filter(!(is.na(entrez.id))) %>% 
   group_by(entrez.id) %>% 
-  summarise(entrez.score=mean(peak.score,na.rm=T))
+  summarise(entrez.score=mean(peak.score,na.rm=T)) %>% 
+  filter(!(is.nan(entrez.score)))
+
+rank_tbl<-dge_tbl %>% 
+#  filter(ID %in% in_cl_peak) %>% 
+  dplyr::select(ID,mda.lfc,mda.padj,entrez.id) %>% 
+  mutate(peak.score=sign(mda.lfc)*-log10(mda.padj)) %>% 
+  unnest(cols=c(entrez.id)) %>% 
+  filter(!(is.na(entrez.id))) %>% 
+  group_by(entrez.id) %>% 
+  summarise(entrez.score=mean(peak.score,na.rm=T)) %>% 
+  filter(!(is.nan(entrez.score)))
+
 
 entrez_rank<-rank_tbl$entrez.score
 names(entrez_rank)<-rank_tbl$entrez.id
@@ -170,3 +182,23 @@ fgseaRes <- fgseaSimple(
 )
 print(as_tibble(fgseaRes) %>% filter(padj<=0.01) %>% 
   arrange(NES),n=100)
+
+topPathways <- as_tibble(fgseaRes) %>% filter(padj<=0.01) %>% 
+  arrange(NES) %>% dplyr::select(pathway) %>% unlist
+plotGseaTable(Gene_set_l[topPathways], entrez_rank, fgseaRes, 
+              gseaParam=1)
+
+library(formattable)
+formattable(print(as_tibble(fgseaRes) %>% filter(padj<=0.01) %>% 
+                    dplyr::select(pathway,padj,NES) %>% 
+                    arrange(NES),n=100))
+
+
+data(examplePathways)
+data(exampleRanks)
+fgseaRes <- fgsea(examplePathways, exampleRanks, nperm=1000,
+                  minSize=15, maxSize=100)
+topPathways <- fgseaRes[head(order(pval), n=15)][order(NES), pathway]
+
+plotGseaTable(examplePathways[topPathways], exampleRanks,
+              fgseaRes, gseaParam=0.5)

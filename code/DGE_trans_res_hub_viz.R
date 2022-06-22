@@ -89,15 +89,17 @@ gg_tmp<-res_dge_tbl %>%
   mutate(hub.io=ifelse(ID %in% in_cl_peak,"in","out"),
          up.down=ifelse(mcf7.lfc < 0,"down","up")) %>% 
   ggplot(.,aes(mcf7.padj,color=hub.io))+
+  scale_color_brewer(palette="Set1")+
   geom_density()+
   facet_grid(up.down~.)
-ggsave("~/Documents/multires_bhicect/weeklies/weekly59/img/pval_dens_MCF7.png",gg_tmp)
+ggsave("~/Documents/multires_bhicect/Poster/img/pval_dens_MCF7.svg",gg_tmp)
 
 gg_tmp<-res_dge_tbl %>% 
 #  filter(ID %in% mcols(ok_dge_GRange)$ID) %>% 
   mutate(hub.io=ifelse(ID %in% in_cl_peak,"in","out")) %>% 
   ggplot(.,aes(mcf7.lfc,color=hub.io))+
+  scale_color_brewer(palette="Set1")+
   geom_density()
-ggsave("~/Documents/multires_bhicect/weeklies/weekly59/img/lfc_dens_MCF7.png",gg_tmp)
+ggsave("~/Documents/multires_bhicect/Poster/img/lfc_dens_MCF7.svg",gg_tmp)
 
 #-------------------------------------
