@@ -19,7 +19,7 @@ tbl_in_fn<-function(tmp_file){
 #-------------------------------------------------------------------------------------------------------
 hub_file<-"~/Documents/multires_bhicect/Bootstrapp_fn/data/DAGGER_tbl/trans_res/HMEC_union_top_trans_res_dagger_tbl.Rda"
 spec_res_file<-"~/Documents/multires_bhicect/data/HMEC/spec_res/"
-dge_file<-"./data/HMEC_MCF7_MDA_DSeq2.Rda"
+dge_file<-"./data/enh_HMEC_MCF7_MDA_DSeq2.Rda"
 #-------------------------------------------------------------------------------------------------------
 hub_tbl<-tbl_in_fn(hub_file) %>% 
   mutate(res=str_split_fixed(node,"_",2)[,1])
@@ -54,48 +54,22 @@ cl_GRange<-IRanges::reduce(do.call("c",tmp_l$GRange))
 #-------------------------------------------------------------------------------------------------------
 dge_tbl<-tbl_in_fn(dge_file)
 
-res_mcf7 <- results( dge_tbl ,name = "cell.line_MCF7_vs_HMEC")
-res_mda <- results( dge_tbl ,name = "cell.line_MDA_vs_HMEC")
-res_mcf7_tbl<-as_tibble(res_mcf7)%>%dplyr::select(log2FoldChange,lfcSE, pvalue, padj)%>%mutate(ID=rownames(res_mcf7))%>%dplyr::rename(mcf7.lfc=log2FoldChange,mcf7.lfc.se=lfcSE,mcf7.pval=pvalue,mcf7.padj=padj)
-res_mda_tbl<-as_tibble(res_mda)%>%dplyr::select(log2FoldChange,lfcSE, pvalue, padj)%>%mutate(ID=rownames(res_mda))%>%dplyr::rename(mda.lfc=log2FoldChange,mda.lfc.se=lfcSE,mda.pval=pvalue,mda.padj=padj)
-res_dge_tbl<-res_mcf7_tbl%>%full_join(.,res_mda_tbl)
-rm(res_mcf7_tbl,res_mda_tbl,res_mda,res_mcf7)
-rm(dge_tbl)
-dge_coord_tbl<-res_dge_tbl %>%
+dge_coord_tbl<-dge_tbl %>%
   dplyr::select(ID) %>% 
-  mutate(chr=str_split_fixed(ID,":|\\.\\.|,",4)[,1],
-         start=as.numeric(str_split_fixed(ID,":|\\.\\.|,",4)[,2]),
-         end=as.numeric(str_split_fixed(ID,":|\\.\\.|,",4)[,3]))
+  mutate(chr=str_split_fixed(ID,":|\\.\\.|,|-",4)[,1],
+         start=as.numeric(str_split_fixed(ID,":|\\.\\.|,|-",4)[,2]),
+         end=as.numeric(str_split_fixed(ID,":|\\.\\.|,|-",4)[,3]))
 dge_Grange<-   GRanges(seqnames=dge_coord_tbl$chr,
                        ranges = IRanges(start=dge_coord_tbl$start,
                                         end=dge_coord_tbl$end
                        ))
-mcols(dge_Grange)<-res_dge_tbl
+mcols(dge_Grange)<-dge_tbl
 
 ok_dge_GRange<-dge_Grange[unique(c(which(!(is.na(mcols(dge_Grange)$mcf7.padj))),which(!(is.na(mcols(dge_Grange)$mda.padj)))))]
 
 in_cl_peak<-mcols(ok_dge_GRange)$ID[unique(queryHits(findOverlaps(ok_dge_GRange,cl_GRange)))]
 
-
-gg_tmp<-res_dge_tbl %>% 
-#  filter(ID %in% mcols(ok_dge_GRange)$ID) %>% 
-  mutate(hub.io=ifelse(ID %in% in_cl_peak,"in","out")) %>% 
-  ggplot(.,aes(mcf7.lfc,-log10(mcf7.padj),color=hub.io))+
-  geom_point(size=0.01)+
-  facet_grid(hub.io~.)
-ggsave("~/Documents/multires_bhicect/weeklies/weekly59/img/volcano_MCF7.png",gg_tmp)
-gg_tmp<-res_dge_tbl %>% 
-#  filter(ID %in% mcols(ok_dge_GRange)$ID) %>% 
-  mutate(hub.io=ifelse(ID %in% in_cl_peak,"in","out"),
-         up.down=ifelse(mcf7.lfc < 0,"down","up")) %>% 
-  ggplot(.,aes(mcf7.padj,color=hub.io))+
-  scale_color_brewer(palette="Set1")+
-  geom_density()+
-  facet_grid(up.down~.)
-gg_tmp
-ggsave("~/Documents/multires_bhicect/Poster/img/pval_dens_MCF7.svg",gg_tmp)
-
-gg_tmp<-res_dge_tbl %>% 
+gg_tmp<-dge_tbl %>% 
   filter(ID %in% mcols(ok_dge_GRange)$ID) %>% 
   mutate(hub.io=ifelse(ID %in% in_cl_peak,"in","out")) %>% 
   ggplot(.,aes(mcf7.lfc,color=hub.io))+
@@ -103,6 +77,17 @@ gg_tmp<-res_dge_tbl %>%
   theme_minimal()+
   geom_density()
 gg_tmp
-ggsave("~/Documents/multires_bhicect/weeklies/Scientia/img/lfc_dens_MCF7.svg",gg_tmp)
 
-#-------------------------------------
+in_vec<-dge_tbl %>% 
+  mutate(hub.io=ifelse(ID %in% in_cl_peak,"in","out")) %>% 
+  filter(hub.io=="in") %>% 
+  dplyr::select(mcf7.lfc) %>% 
+  unlist
+
+out_vec<-dge_tbl %>% 
+  mutate(hub.io=ifelse(ID %in% in_cl_peak,"in","out")) %>% 
+  filter(hub.io=="out") %>% 
+  dplyr::select(mcf7.lfc) %>% 
+  unlist
+
+wilcox.test(in_vec,out_vec,alternative = "less")
