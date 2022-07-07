@@ -21,6 +21,9 @@ tbl_in_fn<-function(tmp_file){
 #-----------------------------------------
 
 count_data_tbl<-tbl_in_fn("./data/enh_CAGE_count_tbl.Rda")
+count_data_tbl<-count_data_tbl %>% 
+  filter(if_any(where(is.numeric), ~ .x > 1))
+
 col_data_tbl<-tibble(cell.line=as.factor(rep(c("HMEC","MCF7","MDA"),c(3,4,1))))
 
 ddsFullCountTable <- DESeqDataSetFromMatrix(

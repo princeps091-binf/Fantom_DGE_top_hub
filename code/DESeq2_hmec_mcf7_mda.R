@@ -30,6 +30,10 @@ count_data_tbl<-cage_count_hmec%>%dplyr::select(-contains("m",ignore.case = F))%
                   full_join(.,cage_count_MDA%>%dplyr::select(-contains("m",ignore.case = F)))%>%
                     full_join(.,cage_count_mcf7%>%dplyr::select(-contains("m",ignore.case = F)))
 count_data_tbl<-count_data_tbl %>% replace(is.na(.), 0)
+count_data_tbl<-count_data_tbl %>% 
+  filter(if_any(where(is.numeric), ~ .x > 1))
+
+
 col_data_tbl<-tibble(cell.line=as.factor(rep(c("HMEC","MDA","MCF7"),c(3,1,4))))
 
 ddsFullCountTable <- DESeqDataSetFromMatrix(

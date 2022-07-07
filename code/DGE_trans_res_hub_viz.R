@@ -103,6 +103,11 @@ gg_tmp<-res_dge_tbl %>%
   theme_minimal()+
   geom_density()
 gg_tmp
-ggsave("~/Documents/multires_bhicect/weeklies/Scientia/img/lfc_dens_MCF7.svg",gg_tmp)
+ggsave("~/Documents/multires_bhicect/weeklies/weekly60/img/lfc_dens_MCF7.svg",gg_tmp)
 
 #-------------------------------------
+res_dge_tbl %>% 
+  ggplot(.,aes(mcf7.pval))+
+  geom_histogram(bins=100)+
+  theme_minimal()
+ggsave("~/Documents/multires_bhicect/weeklies/weekly60/img/TSS_DSEQ2_pval_hist.svg")

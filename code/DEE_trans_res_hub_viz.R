@@ -77,6 +77,7 @@ gg_tmp<-dge_tbl %>%
   theme_minimal()+
   geom_density()
 gg_tmp
+ggsave("~/Documents/multires_bhicect/weeklies/weekly60/img/ENH_DSEQ2_lfc_hub_io.svg")
 
 in_vec<-dge_tbl %>% 
   mutate(hub.io=ifelse(ID %in% in_cl_peak,"in","out")) %>% 
@@ -91,3 +92,9 @@ out_vec<-dge_tbl %>%
   unlist
 
 wilcox.test(in_vec,out_vec,alternative = "less")
+
+dge_tbl %>% 
+  ggplot(.,aes(mcf7.pval))+
+  geom_histogram(bins=100)+
+  theme_minimal()
+ggsave("~/Documents/multires_bhicect/weeklies/weekly60/img/ENH_DSEQ2_pval_hist.svg")
