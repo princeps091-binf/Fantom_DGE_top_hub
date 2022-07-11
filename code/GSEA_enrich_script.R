@@ -1,6 +1,7 @@
 library(tidyverse)
 library(GenomicRanges)
 library(furrr)
+library(parallel)
 options(scipen = 999999999)
 res_set <- c('1Mb','500kb','100kb','50kb','10kb','5kb')
 res_num <- c(1e6,5e5,1e5,5e4,1e4,5e3)
@@ -18,8 +19,7 @@ tbl_in_fn<-function(tmp_file){
 #-------------------------------------------------------------------------------------------------------
 hub_file<-"~/Documents/multires_bhicect/Bootstrapp_fn/data/DAGGER_tbl/trans_res/HMEC_union_top_trans_res_dagger_tbl.Rda"
 spec_res_file<-"~/Documents/multires_bhicect/data/HMEC/spec_res/"
-dge_tbl_file<-"./data/CAGE_DGE_entrez_gene_tbl.Rda"
-
+dge_tbl_file<-"./data/tss_2tag_edgeR_CAGE_DGE_entrez_gene_tbl.Rda"
 #-------------------------------------------------------------------------------------------------------
 dge_tbl<-tbl_in_fn(dge_tbl_file)
 
@@ -131,7 +131,7 @@ Gene_set_l<-tbl_in_fn(gene_set_file)
 
 full_bg_vec<-unique(unlist(Gene_set_l))
 
-foreground_gene_vec<-hub_up_entrez_vec
+foreground_gene_vec<-hub_entrez_vec
 
 background_gene_vec<-dge_entrez_vec
 

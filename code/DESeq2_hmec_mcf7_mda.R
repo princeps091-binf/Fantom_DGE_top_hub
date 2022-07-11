@@ -44,13 +44,15 @@ rownames(ddsFullCountTable)<-count_data_tbl$ID
 
 dds <- DESeq(ddsFullCountTable)
 save(dds,file = "~/Documents/multires_bhicect/DGE_HiC_integration/HMEC_MCF7_MDA_DSeq2.Rda")
-resultsNames(dds)
+
 res_mcf7 <- results( dds ,name = "cell.line_MCF7_vs_HMEC")
 res_mda <- results( dds ,name = "cell.line_MDA_vs_HMEC")
 res_mcf7_tbl<-as_tibble(res_mcf7)%>%dplyr::select(log2FoldChange,lfcSE, pvalue, padj)%>%mutate(ID=rownames(res_mcf7))%>%dplyr::rename(mcf7.lfc=log2FoldChange,mcf7.lfc.se=lfcSE,mcf7.pval=pvalue,mcf7.padj=padj)
 res_mda_tbl<-as_tibble(res_mda)%>%dplyr::select(log2FoldChange,lfcSE, pvalue, padj)%>%mutate(ID=rownames(res_mda))%>%dplyr::rename(mda.lfc=log2FoldChange,mda.lfc.se=lfcSE,mda.pval=pvalue,mda.padj=padj)
 res_dge_tbl<-res_mcf7_tbl%>%full_join(.,res_mda_tbl)
 rm(col_data_tbl,count_data_tbl,ddsFullCountTable)
+save(res_dge_tbl,file = "./data/tss_2tag_HMEC_MCF7_MDA_DSeq2.Rda")
+
 
 res_dge_tbl %>% arrange(desc(mcf7.lfc)) %>% mutate(idx=1:n(),signif=ifelse(is.na(mcf7.padj),"out",ifelse(mcf7.padj<0.01,"FDR < 0.01","FDR > 0.01"))) %>% 
   filter(sign(mcf7.lfc+mcf7.lfc.se)*sign(mcf7.lfc-mcf7.lfc.se)==1) %>% 

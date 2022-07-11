@@ -8,6 +8,16 @@ res_set <- c('1Mb','500kb','100kb','50kb','10kb','5kb')
 res_num <- c(1e6,5e5,1e5,5e4,1e4,5e3)
 names(res_num)<-res_set
 #-------------------------------------------------------------------
+tbl_in_fn<-function(tmp_file){
+  out_tbl<-get(base::load(tmp_file))
+  tmp_obj<-names(mget(base::load(tmp_file)))
+  rm(list=tmp_obj)
+  rm(tmp_obj)
+  
+  return(out_tbl)
+}
+
+#-------------------------------------------------------------------
 out_file<-"./data/FANTOM5_entrez_gene_tbl.Rda"
 
 FANTOM5_tpm_tbl<-vroom("~/Documents/multires_bhicect/data/epi_data/hg19.cage_peak_phase1and2combined_counts_ann.osc.txt",delim="\t",comment = "#",col_select = 1:7)
@@ -27,6 +37,7 @@ FANTOM5_entrez_tbl<-FANTOM5_tpm_tbl %>%
   filter(!(is.na(start)))
 save(FANTOM5_entrez_tbl,file=out_file)
 #-------------------------------------------------------------------
+
 cage_Grange_fn<-function(cage_hmec_a){
   cage_a<-cage_hmec_a%>%filter(!(is.na(start)))
   full_cage_Grange<-   GRanges(seqnames=cage_a$chr,
@@ -38,14 +49,12 @@ cage_Grange_fn<-function(cage_hmec_a){
   return(full_cage_Grange)
 }
 #-------------------------------------------------------------------
+FANTOM5_entrez_tbl<-tbl_in_fn("./data/FANTOM5_entrez_gene_tbl.Rda")
 
-dge_file<-"./data/HMEC_MCF7_MDA_DSeq2.Rda"
-out_file<-"./data/CAGE_DGE_entrez_gene_tbl.Rda"
+dge_file<-"./data/tss_2tag_HMEC_MCF7_MDA_edgeR.Rda"
+out_file<-"./data/tss_2tag_edgeR_CAGE_DGE_entrez_gene_tbl.Rda"
 
-cage_tbl<-get(base::load(dge_file))
-tmp_obj<-names(mget(load(dge_file)))
-rm(list=tmp_obj)
-rm(tmp_obj)
+cage_tbl<-tbl_in_fn(dge_file)
 
 res_mcf7 <- results( cage_tbl ,name = "cell.line_MCF7_vs_HMEC")
 res_mda <- results( cage_tbl ,name = "cell.line_MDA_vs_HMEC")
@@ -54,6 +63,8 @@ res_mda_tbl<-as_tibble(res_mda)%>%dplyr::select(log2FoldChange,lfcSE, pvalue, pa
 res_dge_tbl<-res_mcf7_tbl%>%full_join(.,res_mda_tbl)
 rm(res_mcf7_tbl,res_mda_tbl,res_mda,res_mcf7)
 rm(cage_tbl)
+
+res_dge_tbl<-tbl_in_fn(dge_file)
 
 entrez_dge_tbl<-res_dge_tbl %>% 
   left_join(.,FANTOM5_entrez_tbl,by=c("ID"="peak")) %>% 

@@ -19,7 +19,7 @@ tbl_in_fn<-function(tmp_file){
 #-------------------------------------------------------------------------------------------------------
 hub_file<-"~/Documents/multires_bhicect/Bootstrapp_fn/data/DAGGER_tbl/trans_res/HMEC_union_top_trans_res_dagger_tbl.Rda"
 spec_res_file<-"~/Documents/multires_bhicect/data/HMEC/spec_res/"
-dge_file<-"./data/enh_HMEC_MCF7_MDA_DSeq2.Rda"
+dge_file<-"./data/enh_2tag_HMEC_MCF7_MDA_DSeq2.Rda"
 #-------------------------------------------------------------------------------------------------------
 hub_tbl<-tbl_in_fn(hub_file) %>% 
   mutate(res=str_split_fixed(node,"_",2)[,1])
@@ -77,7 +77,7 @@ gg_tmp<-dge_tbl %>%
   theme_minimal()+
   geom_density()
 gg_tmp
-ggsave("~/Documents/multires_bhicect/weeklies/weekly60/img/ENH_DSEQ2_lfc_hub_io.svg")
+ggsave("~/Documents/multires_bhicect/weeklies/weekly61/img/ENH_deseq2_lfc_hub_io.svg")
 
 in_vec<-dge_tbl %>% 
   mutate(hub.io=ifelse(ID %in% in_cl_peak,"in","out")) %>% 

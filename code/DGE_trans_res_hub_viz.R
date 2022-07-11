@@ -19,7 +19,7 @@ tbl_in_fn<-function(tmp_file){
 #-------------------------------------------------------------------------------------------------------
 hub_file<-"~/Documents/multires_bhicect/Bootstrapp_fn/data/DAGGER_tbl/trans_res/HMEC_union_top_trans_res_dagger_tbl.Rda"
 spec_res_file<-"~/Documents/multires_bhicect/data/HMEC/spec_res/"
-dge_file<-"./data/HMEC_MCF7_MDA_DSeq2.Rda"
+dge_file<-"./data/tss_2tag_HMEC_MCF7_MDA_edgeR.Rda"
 #-------------------------------------------------------------------------------------------------------
 hub_tbl<-tbl_in_fn(hub_file) %>% 
   mutate(res=str_split_fixed(node,"_",2)[,1])
@@ -61,6 +61,9 @@ res_mda_tbl<-as_tibble(res_mda)%>%dplyr::select(log2FoldChange,lfcSE, pvalue, pa
 res_dge_tbl<-res_mcf7_tbl%>%full_join(.,res_mda_tbl)
 rm(res_mcf7_tbl,res_mda_tbl,res_mda,res_mcf7)
 rm(dge_tbl)
+
+res_dge_tbl<-tbl_in_fn(dge_file)
+
 dge_coord_tbl<-res_dge_tbl %>%
   dplyr::select(ID) %>% 
   mutate(chr=str_split_fixed(ID,":|\\.\\.|,",4)[,1],
@@ -103,7 +106,7 @@ gg_tmp<-res_dge_tbl %>%
   theme_minimal()+
   geom_density()
 gg_tmp
-ggsave("~/Documents/multires_bhicect/weeklies/weekly60/img/lfc_dens_MCF7.svg",gg_tmp)
+ggsave("~/Documents/multires_bhicect/weeklies/weekly61/img/lfc_dens_MCF7_2tag_edgeR.svg",gg_tmp)
 
 #-------------------------------------
 res_dge_tbl %>% 
@@ -111,3 +114,17 @@ res_dge_tbl %>%
   geom_histogram(bins=100)+
   theme_minimal()
 ggsave("~/Documents/multires_bhicect/weeklies/weekly60/img/TSS_DSEQ2_pval_hist.svg")
+
+in_vec<-res_dge_tbl %>% 
+  mutate(hub.io=ifelse(ID %in% in_cl_peak,"in","out")) %>% 
+  filter(hub.io=="in") %>% 
+  dplyr::select(mcf7.lfc) %>% 
+  unlist
+
+out_vec<-res_dge_tbl %>% 
+  mutate(hub.io=ifelse(ID %in% in_cl_peak,"in","out")) %>% 
+  filter(hub.io=="out") %>% 
+  dplyr::select(mcf7.lfc) %>% 
+  unlist
+
+wilcox.test(in_vec,out_vec,alternative = "less")$p.value

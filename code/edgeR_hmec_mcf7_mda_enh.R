@@ -37,6 +37,25 @@ qlf.MCF7vsHMEC <- glmQLFTest(fit, coef=2)
 qlf.MDAvsHMEC <- glmQLFTest(fit, coef=3)
 
 
+res_dge_tbl<-topTags(qlf.MCF7vsHMEC,n = Inf)[[1]] %>% 
+  as_tibble %>% 
+  dplyr::rename(
+    mcf7.lfc=logFC,
+    mcf7.pval=PValue,
+    mcf7.padj=FDR
+  ) %>% 
+  dplyr::select(Id,mcf7.lfc,mcf7.pval,mcf7.padj) %>% 
+  full_join(.,topTags(qlf.MDAvsHMEC,n = Inf)[[1]] %>% 
+              as_tibble %>% 
+              dplyr::rename(
+                mda.lfc=logFC,
+                mda.pval=PValue,
+                mda.padj=FDR
+              ) %>% 
+              dplyr::select(Id,mda.lfc,mda.pval,mda.padj)
+  )
+save(res_dge_tbl,file="./data/enh_2tag_HMEC_MCF7_MDA_edgeR.Rda")
+
 topTags(qlf.MCF7vsHMEC,n = Inf)[[1]] %>% 
   as_tibble %>% 
   ggplot(.,aes(logFC))+
@@ -51,3 +70,11 @@ topTags(qlf.MCF7vsHMEC,n = Inf)[[1]] %>%
   as_tibble %>% 
   ggplot(.,aes(logFC,-log10(FDR)))+
   geom_point(size=0.1,alpha=0.2)
+
+deseq2_enh<-tbl_in_fn("./data/enh_HMEC_MCF7_MDA_DSeq2.Rda")
+deseq2_enh %>% 
+  dplyr::select(ID,mcf7.lfc,mcf7.pval) %>% 
+  inner_join(.,topTags(qlf.MCF7vsHMEC,n = Inf)[[1]] %>% 
+               as_tibble,by=c("ID"="Id")) %>% 
+  ggplot(.,aes(-log10(mcf7.pval),-log10(PValue)))+
+  geom_point(size=0.01)

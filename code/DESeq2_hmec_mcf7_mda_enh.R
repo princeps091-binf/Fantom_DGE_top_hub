@@ -41,4 +41,4 @@ res_mda_tbl<-as_tibble(res_mda)%>%dplyr::select(log2FoldChange,lfcSE, pvalue, pa
 res_dge_tbl<-res_mcf7_tbl%>%full_join(.,res_mda_tbl)
 rm(col_data_tbl,count_data_tbl,ddsFullCountTable)
 
-save(res_dge_tbl,file="./data/enh_HMEC_MCF7_MDA_DSeq2.Rda")
+save(res_dge_tbl,file="./data/enh_2tag_HMEC_MCF7_MDA_DSeq2.Rda")

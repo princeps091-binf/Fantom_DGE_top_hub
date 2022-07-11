@@ -43,7 +43,26 @@ qlf.MCF7vsHMEC <- glmQLFTest(fit, coef=2)
 qlf.MDAvsHMEC <- glmQLFTest(fit, coef=3)
 
 
-topTags(qlf.MDAvsHMEC,n = Inf)[[1]] %>% 
+res_dge_tbl<-topTags(qlf.MCF7vsHMEC,n = Inf)[[1]] %>% 
+  as_tibble %>% 
+  dplyr::rename(
+    mcf7.lfc=logFC,
+    mcf7.pval=PValue,
+    mcf7.padj=FDR
+  ) %>% 
+  dplyr::select(ID,mcf7.lfc,mcf7.pval,mcf7.padj) %>% 
+  full_join(.,topTags(qlf.MDAvsHMEC,n = Inf)[[1]] %>% 
+              as_tibble %>% 
+              dplyr::rename(
+                mda.lfc=logFC,
+                mda.pval=PValue,
+                mda.padj=FDR
+              ) %>% 
+              dplyr::select(ID,mda.lfc,mda.pval,mda.padj)
+  )
+save(res_dge_tbl,file="./data/tss_2tag_HMEC_MCF7_MDA_edgeR.Rda")
+
+topTags(qlf.MCF7vsHMEC,n = Inf)[[1]] %>% 
   as_tibble %>% 
   ggplot(.,aes(logFC))+
   geom_density()
